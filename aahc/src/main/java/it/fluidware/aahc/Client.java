@@ -77,9 +77,9 @@ public class Client {
         return this;
     }
 
-    public Request toGet(String url) throws MalformedURLException {
+    public Request toGet(String url) {
 
-        Request r = new Request(this, new URL(url));
+        Request r = new Request(this, url);
 
         return r;
     }

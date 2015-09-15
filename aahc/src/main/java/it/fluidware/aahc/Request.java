@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -27,7 +28,7 @@ import it.fluidware.aahc.tools.DateTool;
 public class Request implements Comparable<Request> {
 
     private Client mClient;
-    private URL mUrl;
+    private String mUrl;
     private HashMap<String, String> mHeaders = new HashMap<>();
 
     private Response mResponse;
@@ -37,8 +38,9 @@ public class Request implements Comparable<Request> {
     protected AAHC.ErrorListener mErrorListener;
     protected AAHC.ProgressListener mProgressListener;
 
+    private Handler mMainThread = new Handler(Looper.getMainLooper());
 
-    public Request(Client client, URL url) {
+    public Request(Client client, String url) {
         mClient = client;
         mUrl = url;
         mHeaders.put(HTTP.USER_AGENT,mClient.getUserAgent());
@@ -83,7 +85,7 @@ public class Request implements Comparable<Request> {
 
     protected void doRequest(int workerId) {
         mWorker = workerId;
-        final Handler mainThread = new Handler(Looper.getMainLooper());
+
 
         mResponse.setRequest(this);
 
@@ -102,7 +104,7 @@ public class Request implements Comparable<Request> {
             if(mHeaders.containsKey(HTTP.IF_MODIFIED_SINCE)) {
                 if(resCode == HTTP.STATUS.NOT_MODIFIED) {
                     // We have no body and we don't use cache, so caller must know we will pass a null object
-                    mainThread.post(new Runnable() {
+                    mMainThread.post(new Runnable() {
                         @Override
                         public void run() {
 
@@ -118,9 +120,7 @@ public class Request implements Comparable<Request> {
 
         } catch (IOException e) {
             Log.e(AAHC.NAME,"IOException on getResponseCode",e);
-            if (mErrorListener != null) {
-                mErrorListener.onError(e);
-            }
+            onError(e);
 
             urlConnection.disconnect();
             return;
@@ -136,11 +136,8 @@ public class Request implements Comparable<Request> {
             OutputStream output = (OutputStream) mResponse.getOutputStream();
 
             if (output == null) {
-                // TODO Error!
                 Log.e(AAHC.NAME, "output stream is null");
-                if (mErrorListener != null) {
-                    mErrorListener.onError(new IOException("output stream is null"));
-                }
+                onError(new IOException("output stream is null"));
                 return;
             }
 
@@ -167,7 +164,7 @@ public class Request implements Comparable<Request> {
                 if (mProgressListener != null) {
 
                     final long current = reads;
-                    mainThread.post(new Runnable() {
+                    mMainThread.post(new Runnable() {
                         @Override
                         public void run() {
                             mProgressListener.progress(current);
@@ -189,7 +186,7 @@ public class Request implements Comparable<Request> {
 
             if (mProgressListener != null) {
 
-                mainThread.post(new Runnable() {
+                mMainThread.post(new Runnable() {
                     @Override
                     public void run() {
                         mProgressListener.complete();
@@ -199,7 +196,7 @@ public class Request implements Comparable<Request> {
 
             final Object obj = mResponse.handle(output);
 
-            mainThread.post(new Runnable() {
+            mMainThread.post(new Runnable() {
                 @Override
                 public void run() {
 
@@ -210,24 +207,10 @@ public class Request implements Comparable<Request> {
 
         } catch(final FileNotFoundException e) {
             Log.e(AAHC.NAME, e.toString(), e);
-            if (mErrorListener != null) {
-                mainThread.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        mErrorListener.onError(e);
-                    }
-                });
-            }
+            onError(e);
         } catch (final IOException e) {
             Log.e(AAHC.NAME, e.toString(), e);
-            if (mErrorListener != null) {
-                mainThread.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        mErrorListener.onError(e);
-                    }
-                });
-            }
+            onError(e);
         } finally {
             Log.d(AAHC.NAME,"URL disconnected " + urlConnection.getURL());
             urlConnection.disconnect();
@@ -257,19 +240,23 @@ public class Request implements Comparable<Request> {
 
     private HttpURLConnection getConnection() {
         if(mUrl == null) {
-            if (mErrorListener != null) {
-                mErrorListener.onError(new Exception("Invalid URL"));
-            }
+            onError(new RuntimeException( String.format("Invalid URL %s",mUrl) ));
+            return null;
+        }
+        URL url = null;
+        try {
+            new URL(mUrl);
+        } catch (MalformedURLException e) {
+            onError(e);
+            return null;
         }
         HttpURLConnection urlConnection = null;
         try {
-            urlConnection = (HttpURLConnection) mUrl.openConnection();
+            urlConnection = (HttpURLConnection) url.openConnection();
             Log.d(AAHC.NAME, "[Worker " + mWorker+"] URL connected" + urlConnection.getURL());
             addHeaders(urlConnection);
         } catch (IOException e) {
-            if (mErrorListener != null) {
-                mErrorListener.onError(e);
-            }
+            onError(e);
         }
         return urlConnection;
     }
@@ -280,6 +267,16 @@ public class Request implements Comparable<Request> {
         }
     }
 
+    private void onError(final Exception e) {
+        if (mErrorListener != null) {
+            mMainThread.post(new Runnable() {
+                @Override
+                public void run() {
+                    mErrorListener.onError(e);
+                }
+            });
+        }
+    }
     @Override
     public int compareTo(Request another) {
         return 0;

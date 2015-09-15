@@ -4,8 +4,8 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -13,16 +13,12 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.File;
-import java.net.MalformedURLException;
 
 import it.fluidware.aahc.AAHC;
-import it.fluidware.aahc.Response;
 import it.fluidware.aahc.impl.FileResponse;
 import it.fluidware.aahc.impl.JSONArrayResponse;
-import it.fluidware.aahc.impl.JSONObjectResponse;
 import it.fluidware.aahc.impl.StringResponse;
 
 public class MainActivity extends AppCompatActivity {
@@ -84,10 +80,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void testOne() {
-        try {
-
-
-            AAHC
+        AAHC
                     .use(this)
                     .as("Test/1.0")
                     .toGet("http://catalist.fluidware.it/api/v1/metadata")
@@ -101,146 +94,125 @@ public class MainActivity extends AppCompatActivity {
                             }
                     );
 
-        } catch (MalformedURLException e) {
-            Log.e("AAHC", "MalformedURLException: " + e.toString());
-        }
 
 
+        File zip = new File(getFilesDir(),"big.zip");
+        AAHC
+                .use(this)
+                .as("Test/1.0")
+                .toGet("http://longisland.fluidware.it/clienti/elfin/1407866221_01-Imagine.mp3")
+                .whileProgress(new AAHC.ProgressListener() {
 
-        try {
-            File zip = new File(getFilesDir(),"big.zip");
-            AAHC
-                    .use(this)
-                    .as("Test/1.0")
-                    .toGet("http://longisland.fluidware.it/clienti/elfin/1407866221_01-Imagine.mp3")
-                    .whileProgress(new AAHC.ProgressListener() {
+                    private long total = 0;
 
-                        private long total = 0;
+                    @Override
+                    public void total(long bytes) {
+                        this.total = bytes;
+                        Log.d("AAHC", "Filesize: " + bytes);
+                    }
 
-                        @Override
-                        public void total(long bytes) {
-                            this.total = bytes;
-                            Log.d("AAHC", "Filesize: " + bytes);
-                        }
+                    @Override
+                    public void progress(long read) {
+                        showProgress(total, read);
+                    }
 
-                        @Override
-                        public void progress(long read) {
-                            showProgress(total, read);
-                        }
-
-                        @Override
-                        public void complete() {
-                            showComplete();
-                        }
+                    @Override
+                    public void complete() {
+                        showComplete();
+                    }
 
 
-                    })
-                    .into(
-                            new FileResponse(zip) {
+                })
+                .into(
+                        new FileResponse(zip) {
 
-                                @Override
-                                public void done(File f) {
-                                    Log.d("AAHC", "Download completato: " + f.length());
-                                }
+                            @Override
+                            public void done(File f) {
+                                Log.d("AAHC", "Download completato: " + f.length());
                             }
-                    );
+                        }
+                );
 
-        } catch (MalformedURLException e) {
-            Log.e("AAHC", "MalformedURLException: " + e.toString());
-        }
+
     }
 
     private void testTwo() {
         Log.d(AAHC.NAME,"Starting testTwo");
-        try {
-
-
-            AAHC
-                    .use(this)
-                    .toGet("http://catalist.fluidware.it/api/v1/metadata")
-                    .into(
-                            new JSONArrayResponse() {
-                                @Override
-                                public void done(JSONArray obj) {
-                                    setText("Trovati " + obj.length() + " elementi");
-                                }
-                            }
-                    );
-
-        } catch (MalformedURLException e) {
-            Log.e("AAHC", "MalformedURLException: " + e.toString());
-        }
+        AAHC
+            .use(this)
+            .toGet("http://catalist.fluidware.it/api/v1/metadata")
+            .into(
+                    new JSONArrayResponse() {
+                        @Override
+                        public void done(JSONArray obj) {
+                            setText("Trovati " + obj.length() + " elementi");
+                        }
+                    }
+            );
     }
 
     private void testThree() {
         for(int i=0;i<30;i++) {
-            try {
-                final int x = i;
-                AAHC
-                        .use(this)
-                        .toGet("http://catalist.fluidware.it/api/v1/metadata?t="+x)
-                        .into(
-                                new JSONArrayResponse() {
-                                    @Override
-                                    public void done(JSONArray obj) {
-                                        Log.d(AAHC.NAME,"done " + x);
-                                    }
-                                }
-                        );
 
-            } catch (MalformedURLException e) {
-                Log.e("AAHC", "MalformedURLException: " + e.toString());
-            }
+            final int x = i;
+            AAHC
+                    .use(this)
+                    .toGet("http://catalist.fluidware.it/api/v1/metadata?t=" + x)
+                    .into(
+                            new JSONArrayResponse() {
+                                @Override
+                                public void done(JSONArray obj) {
+                                    Log.d(AAHC.NAME, "done " + x);
+                                }
+                            }
+                    );
+
+
         }
     }
 
     private void testFour() {
         for(int i=0;i<12;i++) {
-            try {
-                final int x = i;
-                File f = new File(getFilesDir(),"Test_"+i+".zip");
-                AAHC
-                        .use(this)
-                        .toGet("http://catalist.fluidware.it/resources/v1/a2501c8b-3829-47c2-966a-bdcb617d5b50/base.zip")
-                        .into(
-                                new FileResponse(f) {
-                                    @Override
-                                    public void done(File obj) {
-                                        Log.d(AAHC.NAME, "done " + x + " " + obj.getAbsolutePath());
-                                    }
-                                }
-                        );
 
-            } catch (MalformedURLException e) {
-                Log.e("AAHC", "MalformedURLException: " + e.toString());
-            }
-        }
-    }
-
-    private void testFive() {
-        try {
-            File image = new File(getFilesDir(),"prova.png");
+            final int x = i;
+            File f = new File(getFilesDir(),"Test_"+i+".zip");
             AAHC
                     .use(this)
-                    .as("Test/1.0")
-                    .toGet("http://catalist.fluidware.it/resources/v1/a2501c8b-3829-47c2-966a-bdcb617d5b50/assets/cover.png")
+                    .toGet("http://catalist.fluidware.it/resources/v1/a2501c8b-3829-47c2-966a-bdcb617d5b50/base.zip")
                     .into(
-                            new FileResponse(image) {
-
+                            new FileResponse(f) {
                                 @Override
-                                public void done(File f) {
-                                    setImage(f);
+                                public void done(File obj) {
+                                    Log.d(AAHC.NAME, "done " + x + " " + obj.getAbsolutePath());
                                 }
                             }
                     );
 
-        } catch (MalformedURLException e) {
-            Log.e("AAHC", "MalformedURLException: " + e.toString());
+
         }
     }
 
+    private void testFive() {
+
+        File image = new File(getFilesDir(),"prova.png");
+        AAHC
+                .use(this)
+                .as("Test/1.0")
+                .toGet("http://catalist.fluidware.it/resources/v1/a2501c8b-3829-47c2-966a-bdcb617d5b50/assets/cover.png")
+                .into(
+                        new FileResponse(image) {
+
+                            @Override
+                            public void done(File f) {
+                                setImage(f);
+                            }
+                        }
+                );
+
+    }
+
     private void testFiveBis() {
-        try {
+
             final File image = new File(getFilesDir(),"prova.png");
             AAHC
                     .use(this)
@@ -263,9 +235,6 @@ public class MainActivity extends AppCompatActivity {
                             }
                     );
 
-        } catch (MalformedURLException e) {
-            Log.e("AAHC", "MalformedURLException: " + e.toString());
-        }
     }
 
 
@@ -275,7 +244,7 @@ public class MainActivity extends AppCompatActivity {
      *
      */
     private void testSix() {
-        try {
+
             File image = new File(getFilesDir(),"prova.png");
             AAHC
                     .use(this)
@@ -300,9 +269,6 @@ public class MainActivity extends AppCompatActivity {
                             }
                     );
 
-        } catch (MalformedURLException e) {
-            Log.e("AAHC", "MalformedURLException: " + e.toString());
-        }
     }
     @Override
     protected void onDestroy() {
