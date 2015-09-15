@@ -7,7 +7,9 @@
 ## FEATURES
 
 * Simple
+* It uses HttpURLConnection (cfg [Marshmallow behavior changes](https://developer.android.com/preview/behavior-changes.html#behavior-apache-http-client) )
 * Handle BIG Files very well
+* Progress handler
 * Use a Pool (default 4 threads) to optimize/parallelize network requests
 * No Cache (maybe an ANTIFEATURE, but not for me)
 
@@ -20,6 +22,7 @@ ___ABSOLUTE ALPHA___
 
 To Fetch an URL and put the content into a String
 
+``` java
     AAHC
     .use(this)
     .toGet("http://test.fluidware.it/")
@@ -31,11 +34,13 @@ To Fetch an URL and put the content into a String
             }
         }
     );
+```
 
 _Quite easy, isnt'it?_
 
 To Fetch an URL and put the content into a JSONObject
 
+``` java
     AAHC
     .use(this)
     .toGet("http://test.fluidware.it/api/v1/data.json")
@@ -47,8 +52,10 @@ To Fetch an URL and put the content into a JSONObject
             }
         }
     );
+```
 
 
+[See more example](EXAMPLES.md)
 
 
 ## TODO
