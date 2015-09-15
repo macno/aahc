@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=640">
+
+    <link rel="stylesheet" href="stylesheets/core.css" media="screen">
+    <link rel="stylesheet" href="stylesheets/mobile.css" media="handheld, only screen and (max-device-width:640px)">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+
+    <script type="text/javascript" src="javascripts/modernizr.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script type="text/javascript" src="javascripts/headsmart.min.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function () {
+        $('#main_content').headsmart()
+      })
+    </script>
+    <title>Aahc by macno</title>
+  </head>
+
+  <body>
+    <a id="forkme_banner" href="https://github.com/macno/aahc">View on GitHub</a>
+    <div class="shell">
+
+      <header>
+        <span class="ribbon-outer">
+          <span class="ribbon-inner">
+            <h1>Aahc</h1>
+            <h2>Another Android HTTP Client</h2>
+          </span>
+          <span class="left-tail"></span>
+          <span class="right-tail"></span>
+        </span>
+      </header>
+
+      <section id="downloads">
+        <span class="inner">
+          <a href="https://github.com/macno/aahc/zipball/master" class="zip"><em>download</em> .ZIP</a><a href="https://github.com/macno/aahc/tarball/master" class="tgz"><em>download</em> .TGZ</a>
+        </span>
+      </section>
+
+
+      <span class="banner-fix"></span>
+
+
+      <section id="main_content">
+        <h1>
+<a id="aahc" class="anchor" href="#aahc" aria-hidden="true"><span class="octicon octicon-link"></span></a>AAHC</h1>
+
+<h1>
+<a id="another-android-http-client" class="anchor" href="#another-android-http-client" aria-hidden="true"><span class="octicon octicon-link"></span></a>Another Android HTTP Client</h1>
+
+<h2>
+<a id="features" class="anchor" href="#features" aria-hidden="true"><span class="octicon octicon-link"></span></a>FEATURES</h2>
+
+<ul>
+<li>Simple</li>
+<li>It uses HttpURLConnection (cfg <a href="https://developer.android.com/preview/behavior-changes.html#behavior-apache-http-client">Marshmallow behavior changes</a> )</li>
+<li>Handle BIG Files very well</li>
+<li>Progress handler</li>
+<li>Use a Pool (default 4 threads) to optimize/parallelize network requests</li>
+<li>No Cache (maybe an ANTIFEATURE, but not for me)</li>
+</ul>
+
+<h2>
+<a id="status" class="anchor" href="#status" aria-hidden="true"><span class="octicon octicon-link"></span></a>STATUS</h2>
+
+<p><strong><em>ABSOLUTE ALPHA</em></strong></p>
+
+<h2>
+<a id="examples" class="anchor" href="#examples" aria-hidden="true"><span class="octicon octicon-link"></span></a>EXAMPLES</h2>
+
+<p>To Fetch an URL and put the content into a String</p>
+
+<div class="highlight highlight-source-java"><pre>    <span class="pl-c1">AAHC</span>
+    .use(<span class="pl-v">this</span>)
+    .toGet(<span class="pl-s"><span class="pl-pds">"</span>http://test.fluidware.it/<span class="pl-pds">"</span></span>)
+    .into(
+        <span class="pl-k">new</span> <span class="pl-smi">StringResponse</span>() {
+            <span class="pl-k">@Override</span>
+            <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">done</span>(<span class="pl-smi">String</span> <span class="pl-v">str</span>) {
+                <span class="pl-c">// str contains URL body</span>
+            }
+        }
+    );</pre></div>
+
+<p><em>Quite easy, isnt'it?</em></p>
+
+<p>To Fetch an URL and put the content into a JSONObject</p>
+
+<div class="highlight highlight-source-java"><pre>    <span class="pl-c1">AAHC</span>
+    .use(<span class="pl-v">this</span>)
+    .toGet(<span class="pl-s"><span class="pl-pds">"</span>http://test.fluidware.it/api/v1/data.json<span class="pl-pds">"</span></span>)
+    .into(
+        <span class="pl-k">new</span> <span class="pl-smi">JSONObjectResponse</span>() {
+            <span class="pl-k">@Override</span>
+            <span class="pl-k">public</span> <span class="pl-k">void</span> <span class="pl-en">done</span>(<span class="pl-smi">JSONObject</span> <span class="pl-v">json</span>) {
+                <span class="pl-c">// json is the JSONObject fetched</span>
+            }
+        }
+    );</pre></div>
+
+<p><a href="EXAMPLES.md">See more example</a></p>
+
+<h2>
+<a id="todo" class="anchor" href="#todo" aria-hidden="true"><span class="octicon octicon-link"></span></a>TODO</h2>
+
+<ul>
+<li>handle 3xx responses</li>
+<li>handle 5xx responses</li>
+<li>post methods</li>
+<li>head methods</li>
+<li>delete methods</li>
+<li>put methods</li>
+<li>patch methods</li>
+</ul>
+
+<h2>
+<a id="faq" class="anchor" href="#faq" aria-hidden="true"><span class="octicon octicon-link"></span></a>FAQ</h2>
+
+<ul>
+<li>
+<strong>Do we really need it?</strong><br>
+Well, I think so.</li>
+</ul>
+      </section>
+
+      <footer>
+        <span class="ribbon-outer">
+          <span class="ribbon-inner">
+            <p>this project by <a href="https://github.com/macno">macno</a> can be found on <a href="https://github.com/macno/aahc">GitHub</a></p>
+          </span>
+          <span class="left-tail"></span>
+          <span class="right-tail"></span>
+        </span>
+        <p>Generated with <a href="https://pages.github.com">GitHub Pages</a> using Merlot</p>
+        <span class="octocat"></span>
+      </footer>
+
+    </div>
+
+    
+  </body>
+</html>
