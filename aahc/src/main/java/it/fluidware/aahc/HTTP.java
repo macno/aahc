@@ -1,5 +1,12 @@
 package it.fluidware.aahc;
 
+import android.support.annotation.NonNull;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
 /**
  * Created by macno on 13/09/15.
  *
@@ -39,6 +46,7 @@ public final class HTTP {
     public static final String UTF_16 = "UTF-16";
     public static final String UTF_8 = "UTF-8";
 
+    public static final String LOCATION = "Location";
     public static final String LAST_MODIFIED = "Last-Modified";
     public static final String IF_MODIFIED_SINCE = "If-Modified-Since";
     public static final String ACCEPT = "Accept";
@@ -111,6 +119,8 @@ public final class HTTP {
         int GATEWAY_TIMEOUT = 504;
         int HTTP_VERSION_NOT_SUPPORTED = 505;
         int INSUFFICIENT_STORAGE = 507;
+
+
     }
 }
 

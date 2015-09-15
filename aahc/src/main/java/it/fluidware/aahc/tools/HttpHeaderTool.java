@@ -15,7 +15,7 @@ import it.fluidware.aahc.HTTP;
  */
 public final class HttpHeaderTool {
 
-    private static String getHeader(String key, Map<String, List<String>> headers) {
+    public static String getHeader(String key, Map<String, List<String>> headers) {
         String header = null;
         List<String> entries = headers.get(key);
         if(entries != null) {

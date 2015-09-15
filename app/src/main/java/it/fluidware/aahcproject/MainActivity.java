@@ -17,6 +17,7 @@ import org.json.JSONArray;
 import java.io.File;
 
 import it.fluidware.aahc.AAHC;
+import it.fluidware.aahc.HttpException;
 import it.fluidware.aahc.impl.FileResponse;
 import it.fluidware.aahc.impl.JSONArrayResponse;
 import it.fluidware.aahc.impl.StringResponse;
@@ -31,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         mContext = this;
 
-        testSix();
+        testEight();
 
     }
 
@@ -83,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
         AAHC
                     .use(this)
                     .as("Test/1.0")
-                    .toGet("http://catalist.fluidware.it/api/v1/metadata")
+                    .toGet("http://aahc.fluidware.it/")
                     .into(
                             new StringResponse() {
 
@@ -100,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
         AAHC
                 .use(this)
                 .as("Test/1.0")
-                .toGet("http://longisland.fluidware.it/clienti/elfin/1407866221_01-Imagine.mp3")
+                .toGet("http://aahc.fluidware.it/assets/5M.zip")
                 .whileProgress(new AAHC.ProgressListener() {
 
                     private long total = 0;
@@ -137,10 +138,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void testTwo() {
-        Log.d(AAHC.NAME,"Starting testTwo");
+        Log.d(AAHC.NAME, "Starting testTwo");
         AAHC
             .use(this)
-            .toGet("http://catalist.fluidware.it/api/v1/metadata")
+            .toGet("http://aahc.fluidware.it/api/v1/data.json")
             .into(
                     new JSONArrayResponse() {
                         @Override
@@ -157,7 +158,7 @@ public class MainActivity extends AppCompatActivity {
             final int x = i;
             AAHC
                     .use(this)
-                    .toGet("http://catalist.fluidware.it/api/v1/metadata?t=" + x)
+                    .toGet("http://aahc.fluidware.it/api/v1/data.json?t=" + x)
                     .into(
                             new JSONArrayResponse() {
                                 @Override
@@ -178,7 +179,7 @@ public class MainActivity extends AppCompatActivity {
             File f = new File(getFilesDir(),"Test_"+i+".zip");
             AAHC
                     .use(this)
-                    .toGet("http://catalist.fluidware.it/resources/v1/a2501c8b-3829-47c2-966a-bdcb617d5b50/base.zip")
+                    .toGet("http://aahc.fluidware.it/assets/5M.zip")
                     .into(
                             new FileResponse(f) {
                                 @Override
@@ -194,11 +195,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void testFive() {
 
-        File image = new File(getFilesDir(),"prova.png");
+        File image = new File(getFilesDir(),"image.jpg");
         AAHC
                 .use(this)
                 .as("Test/1.0")
-                .toGet("http://catalist.fluidware.it/resources/v1/a2501c8b-3829-47c2-966a-bdcb617d5b50/assets/cover.png")
+                .toGet("http://aahc.fluidware.it/assets/image.jpg")
                 .into(
                         new FileResponse(image) {
 
@@ -213,19 +214,19 @@ public class MainActivity extends AppCompatActivity {
 
     private void testFiveBis() {
 
-            final File image = new File(getFilesDir(),"prova.png");
+            final File image = new File(getFilesDir(),"image.jpg");
             AAHC
                     .use(this)
                     .as("Test/1.0")
-                    .toGet("http://catalist.fluidware.it/resources/v1/a2501c8b-3829-47c2-966a-bdcb617d5b50/assets/cover.png")
+                    .toGet("http://aahc.fluidware.it/assets/image.jpg")
                     .ifModified(image.lastModified())
                     .into(
                             new FileResponse(image) {
 
                                 @Override
                                 public void done(File f) {
-                                    if(f == null) {
-                                        Log.d(AAHC.NAME,"File not modified!");
+                                    if (f == null) {
+                                        Log.d(AAHC.NAME, "File not modified!");
                                         setImage(image);
                                     } else {
                                         setImage(f);
@@ -249,12 +250,12 @@ public class MainActivity extends AppCompatActivity {
             AAHC
                     .use(this)
                     .as("Test/1.0")
-                    .toGet("http://catalist.fluidware.it/resources/v1/a2501c8b-3829-47c2-966a-bdcb617d5b50/assets/coverx1s.png")
+                    .toGet("http://aahc.fluidware.it/not-found")
                     .whenError(new AAHC.ErrorListener() {
 
                         @Override
                         public void onError(Exception e) {
-                            Log.e(AAHC.NAME,"Error while getting image",e);
+                            Log.e(AAHC.NAME, "Client Error while getting image", e);
                             setImage(Color.RED);
                         }
 
@@ -270,6 +271,78 @@ public class MainActivity extends AppCompatActivity {
                     );
 
     }
+
+
+    /**
+     *
+     * Return 500
+     *
+     */
+    private void testSeven() {
+
+        File image = new File(getFilesDir(),"prova.png");
+        AAHC
+                .use(this)
+                .as("Test/1.0")
+                .toGet("http://aahc.fluidware.it/error/500")
+                .whenError(new AAHC.ErrorListener() {
+
+                    @Override
+                    public void onError(Exception e) {
+                        Log.e(AAHC.NAME, "Server Error while getting image", e);
+                        setImage(Color.RED);
+                    }
+
+                })
+                .into(
+                        new FileResponse(image) {
+
+                            @Override
+                            public void done(File f) {
+                                setImage(f);
+                            }
+                        }
+                );
+
+    }
+
+    /**
+     *
+     * Follow redirections
+     *
+     */
+    private void testEight() {
+
+
+        AAHC
+                .use(this)
+                .toGet("http://aahc.fluidware.it/redirect/302")
+                .whenError(new AAHC.ErrorListener() {
+
+                    @Override
+                    public void onError(Exception e) {
+                        if(e instanceof HttpException) {
+                            Log.e(AAHC.NAME, "Http error following link: " + ((HttpException) e).getCode(), e);
+                        } else {
+                            Log.e(AAHC.NAME, "Error following link", e);
+                        }
+
+                    }
+
+                })
+                .into(
+                        new StringResponse() {
+
+                            @Override
+                            public void done(String s) {
+                                Log.d(AAHC.NAME,"Got: " +s);
+                                setText("Followed redirect");
+                            }
+                        }
+                );
+
+    }
+
     @Override
     protected void onDestroy() {
         AAHC.use(this).clear();

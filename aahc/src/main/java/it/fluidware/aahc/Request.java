@@ -21,11 +21,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 import it.fluidware.aahc.tools.DateTool;
+import it.fluidware.aahc.tools.HttpHeaderTool;
+import it.fluidware.aahc.tools.ProtocolTool;
 
 /**
  * Created by macno on 12/09/15.
  */
 public class Request implements Comparable<Request> {
+
+    public static final String HEAD = "HEAD";
+    public static final String GET = "GET";
+    public static final String POST = "POST";
 
     private Client mClient;
     private String mUrl;
@@ -35,14 +41,21 @@ public class Request implements Comparable<Request> {
 
     private int mWorker;
 
+    private int mLoop = 0;
+    private String mOriginalUrl;
+    private String mNextUrl;
+    private String mMethod = GET;
+
     protected AAHC.ErrorListener mErrorListener;
     protected AAHC.ProgressListener mProgressListener;
 
     private Handler mMainThread = new Handler(Looper.getMainLooper());
 
-    public Request(Client client, String url) {
+    public Request(Client client, String method, String url) {
         mClient = client;
         mUrl = url;
+        mOriginalUrl = mUrl;
+        mMethod = method;
         mHeaders.put(HTTP.USER_AGENT,mClient.getUserAgent());
     }
 
@@ -80,6 +93,10 @@ public class Request implements Comparable<Request> {
         return this;
     }
 
+    @Override
+    public int compareTo(Request another) {
+        return 0;
+    }
 
     // Protected methods
 
@@ -115,6 +132,35 @@ public class Request implements Comparable<Request> {
                     urlConnection.disconnect();
                     return;
                 }
+            }
+
+            // Redirection
+
+            if(resCode >= HTTP.STATUS.MULTIPLE_CHOICES && resCode < HTTP.STATUS.BAD_REQUEST) {
+                // This is a redirect...
+                switch (resCode) {
+                    case HTTP.STATUS.MOVED_PERMANENTLY:
+                    case HTTP.STATUS.MOVED_TEMPORARILY:
+                    case HTTP.STATUS.SEE_OTHER:
+                    case HTTP.STATUS.TEMPORARY_REDIRECT:
+                        String nextUrl = HttpHeaderTool.getHeader(HTTP.LOCATION,urlConnection.getHeaderFields());
+                        if(nextUrl != null && !nextUrl.equals("")) {
+                            mNextUrl = nextUrl;
+                            urlConnection.disconnect();
+                            doNextHop();
+                            return;
+                        }
+                        break;
+                }
+            }
+
+            if(resCode < HTTP.STATUS.OK || resCode >= HTTP.STATUS.MULTIPLE_CHOICES) {
+                // This is an error...
+                String message = urlConnection.getResponseMessage();
+                // TODO handle error response body
+                onError(new HttpException(resCode, message));
+
+                return;
             }
 
 
@@ -245,7 +291,7 @@ public class Request implements Comparable<Request> {
         }
         URL url = null;
         try {
-            new URL(mUrl);
+            url = new URL(mUrl);
         } catch (MalformedURLException e) {
             onError(e);
             return null;
@@ -253,7 +299,9 @@ public class Request implements Comparable<Request> {
         HttpURLConnection urlConnection = null;
         try {
             urlConnection = (HttpURLConnection) url.openConnection();
-            Log.d(AAHC.NAME, "[Worker " + mWorker+"] URL connected" + urlConnection.getURL());
+            Log.d(AAHC.NAME, "[Worker " + mWorker + "] URL connected " + urlConnection.getURL());
+            urlConnection.setRequestMethod(mMethod);
+            urlConnection.setInstanceFollowRedirects(false);
             addHeaders(urlConnection);
         } catch (IOException e) {
             onError(e);
@@ -262,6 +310,7 @@ public class Request implements Comparable<Request> {
     }
 
     private void addHeaders(HttpURLConnection urlConnection) {
+        mHeaders.put(HTTP.CONN_DIRECTIVE,HTTP.CONN_CLOSE);
         for (Map.Entry<String, String> header: mHeaders.entrySet()) {
             urlConnection.setRequestProperty(header.getKey(),header.getValue());
         }
@@ -277,8 +326,26 @@ public class Request implements Comparable<Request> {
             });
         }
     }
-    @Override
-    public int compareTo(Request another) {
-        return 0;
+
+    private void doNextHop() {
+
+        if(mLoop+1 >= mClient.getMaxLoop()) {
+            onError(new IOException("Too much redirect"));
+            return;
+        }
+        Log.d(AAHC.NAME, "Following redirect rel --> " + mNextUrl);
+        try {
+            mNextUrl = ProtocolTool.getAbsoluteURL(new URL(mUrl), mNextUrl).toString();
+            Log.d(AAHC.NAME, "Following redirect abs --> " + mNextUrl);
+            mLoop++;
+
+            mUrl = mNextUrl;
+            doRequest(mWorker);
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            onError(e);
+        }
+
     }
 }

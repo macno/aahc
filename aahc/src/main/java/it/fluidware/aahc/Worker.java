@@ -16,10 +16,11 @@ public class Worker extends Thread {
     private boolean mQuit = false;
 
     protected boolean busy = false;
+    protected boolean died = false;
 
     private int mId = -1;
     public Worker(PriorityBlockingQueue<Request> queue, int id) {
-        Log.d(AAHC.NAME,"Created queue " + id);
+        Log.d(AAHC.NAME, "Created queue " + id);
         mQueue = queue;
         mId = id;
     }
@@ -30,32 +31,35 @@ public class Worker extends Thread {
         Request request;
         while (true) {
             try {
-                busy = true;
-                Log.d(AAHC.NAME,"Worker " + mId + " busy");
+
+                Log.d(AAHC.NAME, "Worker " + mId + " ready");
                 long startTimeMs = SystemClock.elapsedRealtime();
                 // release previous request object to avoid leaking request object when mQueue is drained.
                 request = null;
                 try {
                     // Take a request from the queue.
                     request = mQueue.take();
-
+                    busy = true;
+                    Log.d(AAHC.NAME,"Worker " + mId + " busy");
                     request.doRequest(mId);
                 } catch (InterruptedException e) {
                     // We may have been interrupted because it was time to quit.
                     if (mQuit) {
+                        Log.d(AAHC.NAME,"Worker " + mId + " interruped");
                         return;
                     }
                     continue;
                 }
             } finally {
                 busy = false;
-                Log.d(AAHC.NAME,"Worker " + mId + " ready");
             }
         }
+
     }
 
     public void quit() {
         mQuit = true;
         interrupt();
+        died = true;
     }
 }

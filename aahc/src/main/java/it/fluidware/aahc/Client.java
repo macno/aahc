@@ -16,6 +16,8 @@ public class Client {
     private Context mContext;
     private String mUserAgent;
 
+    private static final int MAX_LOOP = 5;
+
     private static final int DEFAULT_POOL_SIZE = 4;
 
     private final PriorityBlockingQueue<Request> mQueue =
@@ -24,6 +26,7 @@ public class Client {
     private Worker[] mWorkers;
     private int mPoolSize;
 
+    private int mMaxLoop = MAX_LOOP;
 
     protected Client(Context context) {
         this(context,DEFAULT_POOL_SIZE);
@@ -58,7 +61,15 @@ public class Client {
             if(mWorkers[i] == null) {
                 mWorkers[i] = new Worker(mQueue, i);
                 mWorkers[i].start();
+            } else {
+
+                if(mWorkers[i].died) {
+                    mWorkers[i] = new Worker(mQueue, i);
+                    mWorkers[i].start();
+                }
             }
+
+
         }
     }
     private void setDefaultUserAgent() {
@@ -77,9 +88,13 @@ public class Client {
         return this;
     }
 
+    public int getMaxLoop() {
+        return mMaxLoop;
+    }
+
     public Request toGet(String url) {
 
-        Request r = new Request(this, url);
+        Request r = new Request(this, Request.GET, url);
 
         return r;
     }
