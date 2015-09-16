@@ -16,7 +16,6 @@ public class Worker extends Thread {
     private boolean mQuit = false;
 
     protected boolean busy = false;
-    protected boolean died = false;
 
     private int mId = -1;
     public Worker(PriorityBlockingQueue<Request> queue, int id) {
@@ -60,6 +59,5 @@ public class Worker extends Thread {
     public void quit() {
         mQuit = true;
         interrupt();
-        died = true;
     }
 }

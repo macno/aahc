@@ -9,7 +9,6 @@ public class HttpException extends IOException {
     private int code;
     private String message;
 
-
     public HttpException(int code, String message) {
         super(message);
         this.code = code;

@@ -63,15 +63,18 @@ public class Client {
                 mWorkers[i].start();
             } else {
 
-                if(mWorkers[i].died) {
+                if(mWorkers[i].isInterrupted()) {
                     mWorkers[i] = new Worker(mQueue, i);
                     mWorkers[i].start();
                 }
             }
 
-
+            if(!mWorkers[i].busy) {
+                break;
+            }
         }
     }
+
     private void setDefaultUserAgent() {
         mUserAgent = AAHC.NAME+"/"+AAHC.VERSION + " "+
             " (Linux; U; Android " + Build.VERSION.RELEASE +

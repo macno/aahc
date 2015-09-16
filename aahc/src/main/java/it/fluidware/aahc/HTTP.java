@@ -1,19 +1,10 @@
 package it.fluidware.aahc;
 
-import android.support.annotation.NonNull;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
 /**
  * Created by macno on 13/09/15.
  *
  * From org.apache.http.protocol.HTTP
  */
-
-
 public final class HTTP {
     public static final String ASCII = "ASCII";
     public static final String CHARSET_PARAM = "; charset=";
