@@ -55,7 +55,7 @@ To Fetch an URL and put the content into a JSONObject
 ```
 
 
-[See more example](EXAMPLES.md)
+[See more example](wiki/Examples)
 
 
 ## TODO
