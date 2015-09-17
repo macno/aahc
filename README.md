@@ -55,7 +55,7 @@ To Fetch an URL and put the content into a JSONObject
 ```
 
 
-[See more example](wiki/Examples)
+[See more example](https://github.com/macno/aahc/wiki/Examples)
 
 
 ## TODO
