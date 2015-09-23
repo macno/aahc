@@ -27,7 +27,7 @@ public abstract class JSONArrayResponse  extends Response<ByteArrayOutputStream,
 
         String source;
         try {
-            source = new String(out.toByteArray(), HttpHeaderTool.parseCharset(mHeaders, RESPONSE_CHARSET));
+            source = new String(out.toByteArray(), HttpHeaderTool.parseCharset(getHeaders(), RESPONSE_CHARSET));
         } catch (UnsupportedEncodingException e) {
             source = new String(out.toByteArray());
         }

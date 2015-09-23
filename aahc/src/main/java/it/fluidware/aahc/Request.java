@@ -2,23 +2,32 @@ package it.fluidware.aahc;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.renderscript.ScriptGroup;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 import it.fluidware.aahc.tools.DateTool;
 import it.fluidware.aahc.tools.HttpHeaderTool;
@@ -33,6 +42,10 @@ public class Request implements Comparable<Request> {
     public static final String GET = "GET";
     public static final String POST = "POST";
 
+    private static final String MULTIPART_BOUNDARY = "*****";
+    private static final String CRLF = "\r\n";
+    private static final String TWOHYPHENS = "--";
+
     private Client mClient;
     private String mUrl;
     private HashMap<String, String> mHeaders = new HashMap<>();
@@ -45,6 +58,13 @@ public class Request implements Comparable<Request> {
     private String mOriginalUrl;
     private String mNextUrl;
     private String mMethod = GET;
+
+    private boolean mDoOutput = false;
+    private boolean mMultipart = false;
+    private Map<String, ?> mData = null;
+    private String mContentType = null;
+    private InputStream mPostInputStream = null;
+    private int mPostLen = -1;
 
     protected AAHC.ErrorListener mErrorListener;
     protected AAHC.ProgressListener mProgressListener;
@@ -59,6 +79,33 @@ public class Request implements Comparable<Request> {
         mHeaders.put(HTTP.USER_AGENT,mClient.getUserAgent());
     }
 
+    public void setMultipart(boolean multipart) {
+        mMultipart = multipart;
+    }
+    public void setData(boolean multipart, Map<String, ?> data) {
+        mMultipart = multipart;
+        mData = data;
+        if(mMultipart ) {
+            mContentType = "multipart/form-data;boundary="+MULTIPART_BOUNDARY;
+        } else {
+            mContentType = "application/x-www-form-urlencoded";
+        }
+    }
+    public void setDoOutput(boolean newValue) {
+        mDoOutput = newValue;
+    }
+
+    public void setPostBody(String contentType, String body) {
+        mContentType = contentType;
+        mPostLen = body.length();
+        mPostInputStream = new ByteArrayInputStream(body.getBytes());
+    }
+
+    public void setInputStream(String contentType, InputStream is) {
+        mContentType = contentType;
+        mPostInputStream = is;
+    }
+
     public Request ifModified(Date since) {
         mHeaders.put(HTTP.IF_MODIFIED_SINCE, DateTool.toRFC1123(since));
         return this;
@@ -70,6 +117,16 @@ public class Request implements Comparable<Request> {
 
     public Request accept(String accept) {
         mHeaders.put(HTTP.ACCEPT, accept);
+        return this;
+    }
+
+    public Request withHeader(String code, String value) {
+        mHeaders.put(code, value);
+        return this;
+    }
+
+    public Request withHeaders(HashMap<String, String> headers) {
+        mHeaders.putAll(headers);
         return this;
     }
 
@@ -109,9 +166,148 @@ public class Request implements Comparable<Request> {
         final HttpURLConnection urlConnection = getConnection();
 
         if(urlConnection == null) {
+            // I don't call onError, because it's aldrady been called in getConnection
             return;
         }
 
+        if(mDoOutput) {
+
+            if(mPostInputStream != null) {
+                try {
+                    if (mPostLen > 0) {
+                        urlConnection.setFixedLengthStreamingMode(mPostLen);
+                    } else {
+                        urlConnection.setChunkedStreamingMode(0);
+                    }
+                    // get an channel from the stream
+                    final ReadableByteChannel inputChannel = Channels.newChannel(mPostInputStream);
+
+                    final WritableByteChannel outputChannel = Channels.newChannel(urlConnection.getOutputStream());
+
+                    // copy the channels
+
+                    final ByteBuffer buffer = ByteBuffer.allocateDirect(16 * 1024);
+
+                    long reads = 0, read = 0;
+                    while ((read = inputChannel.read(buffer)) != -1) {
+                        // prepare the buffer to be drained
+                        buffer.flip();
+                        // write to the channel, may block
+                        outputChannel.write(buffer);
+                        // If partial transfer, shift remainder down
+                        // If buffer is empty, same as doing clear()
+                        buffer.compact();
+
+                        reads += read;
+
+                    }
+                    // EOF will leave buffer in fill state
+                    buffer.flip();
+                    // make sure the buffer is fully drained.
+                    while (buffer.hasRemaining()) {
+                        outputChannel.write(buffer);
+                    }
+
+                    // closing the channels
+                    inputChannel.close();
+                    outputChannel.close();
+                } catch (IOException e) {
+                    onError(e);
+                    urlConnection.disconnect();
+                    return;
+                }
+            } else if(mData != null) {
+
+                try {
+                    DataOutputStream request = new DataOutputStream(urlConnection.getOutputStream());
+
+                    Set keys = mData.keySet();
+                    Iterator keyIter = keys.iterator();
+
+                    for (int i = 0; keyIter.hasNext(); i++) {
+                        Object key = keyIter.next();
+
+                        if (mMultipart) {
+                            request.writeBytes(TWOHYPHENS + MULTIPART_BOUNDARY + CRLF);
+                            if(mData.get(key) instanceof File) {
+                                File f = (File)mData.get(key);
+                                request.writeBytes("Content-Disposition: form-data; name=\"" + key + "\";filename=\"" + f.getName() + "\"" + CRLF + CRLF);
+
+                                FileInputStream in = new FileInputStream(f);
+
+                                byte[] buffer = new byte[1024];
+                                int len = in.read(buffer);
+                                while (len != -1) {
+                                    request.write(buffer, 0, len);
+                                    len = in.read(buffer);
+                                }
+
+                            } else if (mData.get(key) instanceof String) {
+                                request.writeBytes("Content-Disposition: form-data; name=\"" + key + "\"" +CRLF + CRLF + ((String)mData.get(key)));
+                            }
+
+
+                            request.writeBytes(CRLF);
+                            request.writeBytes(TWOHYPHENS + MULTIPART_BOUNDARY + CRLF);
+                        } else {
+                            String content = "";
+                            if (i != 0) {
+                                content += "&";
+                            }
+                            String pair = "";
+                            try {
+                                pair = key + "=" + URLEncoder.encode((String) mData.get(key), "UTF-8");
+                                content += pair;
+                                request.writeBytes(content);
+                            } catch (UnsupportedEncodingException e) {
+                                Log.e(AAHC.NAME, "toPost: " + e.toString(), e);
+                            }
+                        }
+
+
+                    }
+
+                    request.flush();
+                    request.close();
+
+                } catch (IOException e) {
+                    Log.e(AAHC.NAME,e.toString(),e);
+                }
+
+
+
+            } else {
+                onError(new IOException("mDoOutput set to true but nothing to post"));
+                urlConnection.disconnect();
+                return;
+            }
+
+
+        }
+        try {
+            mResponse.setCode(urlConnection.getResponseCode());
+            mResponse.setMessage(urlConnection.getResponseMessage());
+
+        } catch(IOException e) {
+            onError(e);
+            urlConnection.disconnect();
+            return;
+        }
+
+        mResponse.setHeaders(urlConnection.getHeaderFields());
+
+        if(mMethod.equals(HEAD)) {
+            mMainThread.post(new Runnable() {
+                @Override
+                public void run() {
+
+                    mResponse.done(null);
+                }
+            });
+
+            urlConnection.disconnect();
+            return;
+        }
         try {
             int resCode = urlConnection.getResponseCode();
 
@@ -177,7 +373,6 @@ public class Request implements Comparable<Request> {
         try {
             InputStream input = new BufferedInputStream(urlConnection.getInputStream());
 
-            mResponse.setHeaders(urlConnection.getHeaderFields());
 
             OutputStream output = (OutputStream) mResponse.getOutputStream();
 
@@ -301,7 +496,9 @@ public class Request implements Comparable<Request> {
             urlConnection = (HttpURLConnection) url.openConnection();
             Log.d(AAHC.NAME, "[Worker " + mWorker + "] URL connected " + urlConnection.getURL());
             urlConnection.setRequestMethod(mMethod);
+            urlConnection.setUseCaches(false);
             urlConnection.setInstanceFollowRedirects(false);
+            urlConnection.setDoOutput(mDoOutput);
             addHeaders(urlConnection);
         } catch (IOException e) {
             onError(e);
@@ -311,9 +508,13 @@ public class Request implements Comparable<Request> {
 
     private void addHeaders(HttpURLConnection urlConnection) {
         mHeaders.put(HTTP.CONN_DIRECTIVE,HTTP.CONN_CLOSE);
+        if(mContentType != null) {
+            mHeaders.put(HTTP.CONTENT_TYPE,mContentType);
+        }
         for (Map.Entry<String, String> header: mHeaders.entrySet()) {
             urlConnection.setRequestProperty(header.getKey(),header.getValue());
         }
+
     }
 
     private void onError(final Exception e) {

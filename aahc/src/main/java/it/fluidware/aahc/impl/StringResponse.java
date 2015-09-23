@@ -21,7 +21,7 @@ public abstract class StringResponse extends Response<ByteArrayOutputStream, Str
 
         String parsed;
         try {
-            parsed = new String(out.toByteArray(), HttpHeaderTool.parseCharset(mHeaders));
+            parsed = new String(out.toByteArray(), HttpHeaderTool.parseCharset(getHeaders()));
         } catch (UnsupportedEncodingException e) {
             parsed = new String(out.toByteArray());
         }

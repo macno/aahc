@@ -34,7 +34,7 @@ public abstract class FileResponse extends Response<FileOutputStream, File> {
 
     @Override
     protected File handle(FileOutputStream out) {
-        Date lastModified = HttpHeaderTool.lastModified(mHeaders);
+        Date lastModified = HttpHeaderTool.lastModified(getHeaders());
         if(lastModified != null) {
             mFile.setLastModified(lastModified.getTime());
         }

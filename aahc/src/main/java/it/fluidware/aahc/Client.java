@@ -4,8 +4,17 @@ import android.content.Context;
 import android.os.Build;
 import android.util.Log;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.PriorityBlockingQueue;
 
 /**
@@ -101,6 +110,37 @@ public class Client {
 
         return r;
     }
+
+    public Request toHead(String url) {
+
+        Request r = new Request(this, Request.HEAD, url);
+
+        return r;
+    }
+
+    public Request toPost(String url,String contentType, String data) {
+        Request r = new Request(this, Request.POST, url);
+        r.setDoOutput(true);
+        r.setPostBody(contentType, data);
+        return r;
+    }
+
+    public Request toPost(String url, boolean multipart, Map<String, ?> data) {
+        Request r = new Request(this, Request.POST, url);
+        r.setDoOutput(true);
+        r.setData(multipart, data);
+
+        return r;
+    }
+
+    public Request toPost(String url,String contentType, InputStream is) {
+
+        Request r = new Request(this, Request.POST, url);
+        r.setDoOutput(true);
+        r.setInputStream(contentType,is);
+        return r;
+    }
+
 
     public void clear() {
         mQueue.clear();
