@@ -60,10 +60,10 @@ To Fetch an URL and put the content into a JSONObject
 
 ## TODO
 
-* handle 3xx responses
-* handle 5xx responses
-* post methods
-* head methods
+* ~~handle 3xx responses~~ v 0.1.0
+* handle 4xx and 5xx responses
+* ~~post methods~~ Done v 0.1.0
+* ~~head methods~~ Done v 0.1.0
 * delete methods
 * put methods
 * patch methods
