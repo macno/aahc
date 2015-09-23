@@ -15,8 +15,9 @@
 
 ## STATUS
 
-___ABSOLUTE ALPHA___
+___ALPHA___
 
+Used in internal projects
 
 ## EXAMPLES
 
@@ -25,7 +26,7 @@ To Fetch an URL and put the content into a String
 ``` java
     AAHC
     .use(this)
-    .toGet("http://test.fluidware.it/")
+    .toGet("http://aahc.fluidware.it/")
     .into(
         new StringResponse() {
             @Override
@@ -43,7 +44,7 @@ To Fetch an URL and put the content into a JSONObject
 ``` java
     AAHC
     .use(this)
-    .toGet("http://test.fluidware.it/api/v1/data.json")
+    .toGet("http://aahc.fluidware.it/api/v1/data.json")
     .into(
         new JSONObjectResponse() {
             @Override
