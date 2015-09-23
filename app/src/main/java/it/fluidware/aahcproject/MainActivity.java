@@ -13,11 +13,18 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import it.fluidware.aahc.AAHC;
 import it.fluidware.aahc.HttpException;
+import it.fluidware.aahc.impl.EmptyResponse;
 import it.fluidware.aahc.impl.FileResponse;
 import it.fluidware.aahc.impl.JSONArrayResponse;
 import it.fluidware.aahc.impl.StringResponse;
@@ -32,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         mContext = this;
 
-        testEight();
+        testTwelve();
 
     }
 
@@ -85,6 +92,7 @@ public class MainActivity extends AppCompatActivity {
                     .use(this)
                     .as("Test/1.0")
                     .toGet("http://aahc.fluidware.it/")
+                    .withHeader("Device-Id","MyUniqueId")
                     .into(
                             new StringResponse() {
 
@@ -340,6 +348,147 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
                 );
+
+    }
+
+    /**
+     *
+     * Head
+     *
+     */
+    private void testNine() {
+
+
+        AAHC
+                .use(this)
+                .toHead("http://aahc.fluidware.it/redirect/302")
+                .into(
+                        new EmptyResponse() {
+
+                            @Override
+                            public void done(Boolean s) {
+                                Log.d(AAHC.NAME, "HEAD DONE");
+                                Map<String, List<String>> headers = getHeaders();
+
+                                Iterator it = headers.entrySet().iterator();
+                                while (it.hasNext()) {
+                                    Map.Entry pair = (Map.Entry)it.next();
+
+
+                                    List<String> entries = headers.get(pair.getKey());
+
+                                    Log.d(AAHC.NAME,""+pair.getKey());
+                                    if (entries != null) {
+                                        for (String val : entries) {
+                                            Log.d(AAHC.NAME, ".\t\t"+val);
+                                        }
+                                    }
+
+                                }
+                            }
+                        }
+                );
+
+    }
+
+    /**
+     * POST form
+     */
+    private void testTen() {
+        HashMap<String, String> params = new HashMap<>();
+        params.put("key1","value1");
+        params.put("key2", "value2");
+        AAHC
+                .use(this)
+                .toPost("http://aahc.fluidware.it/post/form", false, params)
+                .into(
+                        new StringResponse() {
+
+                            @Override
+                            public void done(String s) {
+                                Log.d(AAHC.NAME, "POST DONE");
+                                Log.d(AAHC.NAME, "RESPONSE: " + s);
+
+                            }
+                        }
+                );
+
+    }
+
+
+    /**
+     * POST file
+     */
+    private void testEleven() {
+
+        final File image = new File(getFilesDir(),"image.jpg");
+        if(!image.exists()) {
+            AAHC
+                    .use(this)
+                    .toGet("http://aahc.fluidware.it/assets/image.jpg")
+                    .into(
+                            new FileResponse(image) {
+
+                                @Override
+                                public void done(File f) {
+                                    if (f != null) {
+                                        Log.d(AAHC.NAME, "IMAGE OK");
+                                        testEleven();
+                                    } else {
+                                        Log.d(AAHC.NAME, "IMAGE FAILED");
+                                    }
+                                }
+                            }
+                    );
+            return;
+        }
+        HashMap<String, Object> params = new HashMap<>();
+        params.put("key1","value1");
+        params.put("key2", image);
+        AAHC
+                .use(this)
+                .toPost("http://aahc.fluidware.it/post/file", true, params)
+                .into(
+                        new StringResponse() {
+
+                            @Override
+                            public void done(String s) {
+                                Log.d(AAHC.NAME, "POST DONE");
+                                Log.d(AAHC.NAME, "RESPONSE: " + s);
+
+                            }
+                        }
+                );
+
+    }
+
+    /**
+     * POST inline
+     */
+    private void testTwelve() {
+
+        try {
+            JSONObject o = new JSONObject();
+            o.put("key1", "one").put("key2", "two");
+
+            AAHC
+                    .use(this)
+                    .toPost("http://aahc.fluidware.it/post/json", "application/json", o.toString())
+                    .into(
+                            new StringResponse() {
+
+                                @Override
+                                public void done(String s) {
+                                    Log.d(AAHC.NAME, "POST DONE");
+                                    Log.d(AAHC.NAME, "RESPONSE: " + s);
+
+                                }
+                            }
+                    );
+
+        } catch (JSONException e) {
+            Log.e(AAHC.NAME,e.toString(),e);
+        }
 
     }
 
