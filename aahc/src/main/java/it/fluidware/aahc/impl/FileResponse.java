@@ -25,6 +25,9 @@ public abstract class FileResponse extends Response<FileOutputStream, File> {
     protected FileOutputStream getOutputStream() {
         FileOutputStream out = null;
         try {
+            if (!mFile.getParentFile().exists()) {
+                mFile.getParentFile().mkdirs();
+            }
             out = new FileOutputStream(mFile);
         } catch (FileNotFoundException e) {
 

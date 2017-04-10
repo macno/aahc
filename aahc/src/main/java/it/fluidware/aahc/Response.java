@@ -1,6 +1,8 @@
 package it.fluidware.aahc;
 
 import java.io.OutputStream;
+import java.net.HttpCookie;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -16,7 +18,20 @@ public abstract class Response<S,T> {
 
     private Map<String, List<String>> mHeaders;
 
+    private List<HttpCookie> mCookies;
+
     public Response() {
+    }
+
+    public void addCookie(HttpCookie cookie) {
+        if(mCookies == null) {
+            mCookies = new ArrayList<>();
+        }
+        mCookies.add(cookie);
+    }
+
+    public List<HttpCookie> getCookies() {
+        return mCookies;
     }
 
     public void setHeaders(Map<String, List<String>> headers) {
@@ -52,6 +67,5 @@ public abstract class Response<S,T> {
     protected Map<String, List<String>> getHeaders() {
         return mHeaders;
     }
-
 
 }

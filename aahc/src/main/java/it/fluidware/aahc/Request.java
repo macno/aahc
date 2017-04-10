@@ -7,6 +7,7 @@ import android.util.Log;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,6 +16,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.CookieManager;
+import java.net.HttpCookie;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -26,6 +29,7 @@ import java.nio.channels.WritableByteChannel;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -41,6 +45,9 @@ public class Request implements Comparable<Request> {
     public static final String HEAD = "HEAD";
     public static final String GET = "GET";
     public static final String POST = "POST";
+    public static final String PUT = "PUT";
+    public static final String DELETE = "DELETE";
+    public static final String PATCH = "PATCH";
 
     private static final String MULTIPART_BOUNDARY = "*****";
     private static final String CRLF = "\r\n";
@@ -69,6 +76,8 @@ public class Request implements Comparable<Request> {
     protected AAHC.ErrorListener mErrorListener;
     protected AAHC.ProgressListener mProgressListener;
 
+    private static final String COOKIES_HEADER = "Set-Cookie";
+
     private Handler mMainThread = new Handler(Looper.getMainLooper());
 
     public Request(Client client, String method, String url) {
@@ -82,6 +91,7 @@ public class Request implements Comparable<Request> {
     public void setMultipart(boolean multipart) {
         mMultipart = multipart;
     }
+
     public void setData(boolean multipart, Map<String, ?> data) {
         mMultipart = multipart;
         mData = data;
@@ -294,7 +304,17 @@ public class Request implements Comparable<Request> {
             return;
         }
 
-        mResponse.setHeaders(urlConnection.getHeaderFields());
+
+        Map<String, List<String>> headerFields = urlConnection.getHeaderFields();
+        mResponse.setHeaders(headerFields);
+
+        List<String> cookiesHeader = headerFields.get(COOKIES_HEADER);
+
+        if (cookiesHeader != null) {
+            for (String cookie : cookiesHeader) {
+                mResponse.addCookie(HttpCookie.parse(cookie).get(0));
+            }
+        }
 
         if(mMethod.equals(HEAD)) {
             mMainThread.post(new Runnable() {
@@ -312,6 +332,7 @@ public class Request implements Comparable<Request> {
             int resCode = urlConnection.getResponseCode();
 
             Log.d(AAHC.NAME,"ResCode: " + resCode);
+
 
             // if not-modified
             if(mHeaders.containsKey(HTTP.IF_MODIFIED_SINCE)) {
@@ -339,7 +360,7 @@ public class Request implements Comparable<Request> {
                     case HTTP.STATUS.MOVED_TEMPORARILY:
                     case HTTP.STATUS.SEE_OTHER:
                     case HTTP.STATUS.TEMPORARY_REDIRECT:
-                        String nextUrl = HttpHeaderTool.getHeader(HTTP.LOCATION,urlConnection.getHeaderFields());
+                        String nextUrl = HttpHeaderTool.getHeader(HTTP.LOCATION,headerFields);
                         if(nextUrl != null && !nextUrl.equals("")) {
                             mNextUrl = nextUrl;
                             urlConnection.disconnect();
@@ -353,9 +374,71 @@ public class Request implements Comparable<Request> {
             if(resCode < HTTP.STATUS.OK || resCode >= HTTP.STATUS.MULTIPLE_CHOICES) {
                 // This is an error...
                 String message = urlConnection.getResponseMessage();
-                // TODO handle error response body
-                onError(new HttpException(resCode, message));
+                Log.d("AAHC","Content/Length: "+urlConnection.getContentLength());
+                Log.d("AAHC","Content/Type: "+urlConnection.getContentType());
 
+                String body = null;
+                try {
+                    InputStream input = new BufferedInputStream(urlConnection.getErrorStream());
+                    ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+                    if (output == null) {
+                        Log.e(AAHC.NAME, "output stream is null");
+                        onError(new IOException("output stream is null"));
+                        return;
+                    }
+
+                    // get an channel from the stream
+                    final ReadableByteChannel inputChannel = Channels.newChannel(input);
+
+                    final WritableByteChannel outputChannel = Channels.newChannel(output);
+
+                    // copy the channels
+
+                    final ByteBuffer buffer = ByteBuffer.allocateDirect(16 * 1024);
+
+                    long reads = 0, read = 0;
+                    while ((read = inputChannel.read(buffer)) != -1) {
+                        // prepare the buffer to be drained
+                        buffer.flip();
+                        // write to the channel, may block
+                        outputChannel.write(buffer);
+                        // If partial transfer, shift remainder down
+                        // If buffer is empty, same as doing clear()
+                        buffer.compact();
+
+                        reads += read;
+                        if (mProgressListener != null) {
+
+                            final long current = reads;
+                            mMainThread.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mProgressListener.progress(current);
+                                }
+                            });
+                        }
+
+                    }
+                    // EOF will leave buffer in fill state
+                    buffer.flip();
+                    // make sure the buffer is fully drained.
+                    while (buffer.hasRemaining()) {
+                        outputChannel.write(buffer);
+                    }
+
+                    // closing the channels
+                    inputChannel.close();
+                    outputChannel.close();
+
+                    body = new String(output.toByteArray(), HttpHeaderTool.parseCharset(headerFields));
+                } catch(IOException e) {
+                    Log.e("AAHC","Impossibile parsare il body dell'errore ", e);
+                }
+
+                onError(new HttpException(resCode, message, body));
+
+                urlConnection.disconnect();
                 return;
             }
 
@@ -495,6 +578,7 @@ public class Request implements Comparable<Request> {
         try {
             urlConnection = (HttpURLConnection) url.openConnection();
             Log.d(AAHC.NAME, "[Worker " + mWorker + "] URL connected " + urlConnection.getURL());
+
             urlConnection.setRequestMethod(mMethod);
             urlConnection.setUseCaches(false);
             urlConnection.setInstanceFollowRedirects(false);
@@ -512,6 +596,7 @@ public class Request implements Comparable<Request> {
             mHeaders.put(HTTP.CONTENT_TYPE,mContentType);
         }
         for (Map.Entry<String, String> header: mHeaders.entrySet()) {
+            Log.d("AAHC","Set http header:" + header.getKey() + " = " + header.getValue());
             urlConnection.setRequestProperty(header.getKey(),header.getValue());
         }
 

@@ -1,5 +1,7 @@
 package it.fluidware.aahc.impl;
 
+import android.util.Log;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -34,7 +36,7 @@ public abstract class JSONObjectResponse  extends Response<ByteArrayOutputStream
         try {
             ret = new JSONObject(source);
         } catch (JSONException e) {
-
+            Log.e("AAHC","JSONException: " + e.getMessage());
         }
         return ret;
     }

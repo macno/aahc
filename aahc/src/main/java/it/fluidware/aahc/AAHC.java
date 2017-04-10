@@ -29,13 +29,13 @@ public class AAHC {
     }
 
     public interface ErrorListener {
-        public void onError(Exception e);
+        void onError(Exception e);
     }
 
     public interface ProgressListener {
-        public void total(long bytes);
-        public void progress(long read);
-        public void complete();
+        void total(long bytes);
+        void progress(long read);
+        void complete();
     }
 
 }
